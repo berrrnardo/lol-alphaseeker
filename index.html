@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="pt-BR"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="theme-color" content="#0a0e14">
+<title>LoL Odds</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Rajdhani:wght@500;600;700&display=swap');
+:root{--bg:#0a0e14;--panel:#141b26;--panel2:#0e141d;--line:#243140;--blue:#4d8dff;--red:#ff5a5a;
+--gold:#e8b84b;--green:#34d399;--txt:#eaf1f8;--mut:#8696a8}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:radial-gradient(ellipse at top,#101824,#070a0f 75%);color:var(--txt);
+font-family:'Rajdhani',sans-serif;padding:14px 12px 40px;max-width:560px;margin:0 auto;min-height:100vh}
+.top{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px}
+h1{font-family:'Chakra Petch';font-weight:700;font-size:1.15rem;letter-spacing:.06em;text-transform:uppercase;margin:0}
+h1 b{color:var(--gold)}
+.status{font-size:.66rem;color:var(--mut);text-align:right;line-height:1.3}
+.status .dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--mut);margin-right:4px}
+.status .dot.live{background:var(--green)}.status .dot.snap{background:var(--gold)}
+.tabs{display:flex;gap:6px;margin:12px 0}
+.tab{flex:1;text-align:center;padding:9px;border-radius:9px;background:var(--panel2);border:1px solid var(--line);
+font-family:'Chakra Petch';font-size:.78rem;letter-spacing:.04em;text-transform:uppercase;color:var(--mut)}
+.tab.on{background:var(--panel);color:var(--txt);border-color:var(--gold)}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:14px;margin-bottom:12px}
+label{display:block;font-size:.66rem;color:var(--mut);text-transform:uppercase;letter-spacing:.07em;margin:9px 0 3px}
+.team-row{display:flex;align-items:center;gap:8px}
+.team-row .sd{font-family:'Chakra Petch';font-size:.72rem;width:14px;text-align:center}
+.sd.b{color:var(--blue)}.sd.r{color:var(--red)}
+input,select{width:100%;background:#0a121c;border:1px solid var(--line);color:var(--txt);
+padding:11px 10px;border-radius:9px;font-family:'Rajdhani';font-size:1rem;font-weight:600}
+input:focus,select:focus{outline:none;border-color:var(--gold)}
+.draft{display:none;margin-top:8px}
+.draft.show{display:block}
+.chips{display:flex;flex-wrap:wrap;gap:5px;margin-top:4px}
+.chip{flex:1 1 30%;min-width:0}
+.chip input{padding:8px 7px;font-size:.82rem;text-align:center}
+.adv{font-size:.7rem;color:var(--gold);text-align:center;margin-top:6px;letter-spacing:.04em}
+.go{width:100%;margin-top:6px;background:linear-gradient(95deg,var(--blue),var(--red));border:none;color:#fff;
+font-family:'Chakra Petch';font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:15px;
+border-radius:11px;font-size:.95rem}
+.go:active{filter:brightness(1.2)}
+#out{display:none}
+.bar{height:46px;border-radius:9px;overflow:hidden;display:flex;font-family:'Chakra Petch';font-weight:700;
+font-size:1.1rem;border:1px solid var(--line);margin-bottom:4px}
+.bar .b{background:linear-gradient(90deg,#15346e,#4d8dff);display:flex;align-items:center;padding-left:13px;color:#fff;transition:width .7s cubic-bezier(.2,.8,.2,1);white-space:nowrap}
+.bar .r{background:linear-gradient(90deg,#ff5a5a,#7a1d1d);display:flex;align-items:center;justify-content:flex-end;padding-right:13px;color:#fff;flex:1;transition:width .7s;white-space:nowrap}
+.nm{display:flex;justify-content:space-between;font-size:.82rem;color:var(--mut);margin:2px 2px 12px}
+.odds{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:6px}
+.ob{background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:9px;text-align:center}
+.ob .lab{font-size:.62rem;color:var(--mut);text-transform:uppercase;letter-spacing:.06em}
+.ob .val{font-family:'Chakra Petch';font-size:1.35rem;font-weight:700;margin-top:2px}
+.vs{margin-top:8px;background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:11px}
+.vs .lab{font-size:.66rem;color:var(--mut);text-transform:uppercase;letter-spacing:.06em;margin-bottom:7px}
+.vrow{display:flex;gap:8px}
+.vrow input{flex:1}
+.verdict{margin-top:9px;padding:10px;border-radius:9px;font-size:.86rem;font-weight:600;text-align:center;display:none}
+.verdict.value{background:rgba(52,211,153,.13);border:1px solid var(--green);color:var(--green);display:block}
+.verdict.novalue{background:rgba(255,90,90,.1);border:1px solid var(--red);color:#ff9a9a;display:block}
+.reading{margin-top:8px;font-size:.74rem;color:var(--mut)}
+.tag{display:inline-block;background:var(--panel2);border:1px solid var(--line);border-radius:14px;padding:2px 8px;margin:2px 3px 0 0;font-size:.72rem;color:#cdd9e5}
+.conf{font-size:.7rem;color:var(--mut);text-align:center;margin-top:8px}
+.foot{font-size:.64rem;color:#566576;text-align:center;margin-top:16px;line-height:1.6}
+.warn{color:var(--gold)}
+datalist{position:absolute}
+</style></head><body>
+<div class="top"><h1>LoL <b>Odds</b></h1><div class="status" id="status"><span class="dot" id="dot"></span><span id="stxt">carregando…</span></div></div>
+
+<div class="tabs"><div class="tab on" id="tabT" onclick="mode('teams')">Só times</div>
+<div class="tab" id="tabD" onclick="mode('draft')">Times + draft</div></div>
+
+<div class="card">
+ <div class="team-row"><span class="sd b">◤</span><div style="flex:1"><label>Time Blue</label>
+  <input id="ta" list="teams" placeholder="ex: T1" autocomplete="off"></div></div>
+ <div class="draft" id="da"><div class="chips" id="ca"></div></div>
+ <div class="team-row" style="margin-top:10px"><span class="sd r">◥</span><div style="flex:1"><label>Time Red</label>
+  <input id="tb" list="teams" placeholder="ex: Gen.G" autocomplete="off"></div></div>
+ <div class="draft" id="db"><div class="chips" id="cb"></div></div>
+ <button class="go" onclick="run()">Calcular</button>
+</div>
+
+<div id="out">
+ <div class="card">
+  <div class="bar"><div class="b" id="bb">50%</div><div class="r" id="rb">50%</div></div>
+  <div class="nm"><span id="na">Blue</span><span id="nb">Red</span></div>
+  <div class="odds"><div class="ob"><div class="lab" id="loa">Odd justa A</div><div class="val" id="oa">—</div></div>
+   <div class="ob"><div class="lab" id="lob">Odd justa B</div><div class="val" id="ob">—</div></div></div>
+  <div class="reading" id="read"></div>
+  <div class="conf" id="conf"></div>
+  <div class="vs"><div class="lab">Comparar com a casa — digite a odd que a casa paga</div>
+   <div class="vrow"><input id="hoa" inputmode="decimal" placeholder="odd casa A" oninput="cmp()">
+    <input id="hob" inputmode="decimal" placeholder="odd casa B" oninput="cmp()"></div>
+   <div class="verdict" id="verd"></div></div>
+ </div>
+</div>
+
+<div class="foot" id="foot"></div>
+<datalist id="teams"></datalist><datalist id="champs"></datalist>
+<script src="bundle.js"></script>
+<script>
+const B=window.BUNDLE; let R=B.snapshot, SRC="snapshot";
+const ROLES=["top","jng","mid","bot","sup"],RL=["Top","Jng","Mid","Bot","Sup"];
+// CONFIG: aponte para o seu ratings.json no GitHub (raw). Deixe vazio p/ usar só snapshot.
+// Auto-detecta: busca ratings.json na mesma pasta da página. Sem editar nada.
+// (Funciona no GitHub Pages e em qualquer hospedagem. Só cai no snapshot se o arquivo não existir ainda.)
+const RATINGS_URL=new URL("ratings.json",location.href).href;
+
+function fill(id,arr){document.getElementById(id).innerHTML=arr.map(x=>`<option value="${x.replace(/"/g,'&quot;')}">`).join('')}
+fill('teams',B.teams);fill('champs',B.champs);
+['a','b'].forEach(s=>{document.getElementById('c'+s).innerHTML=ROLES.map((r,i)=>
+ `<div class="chip"><input list="champs" id="${s}_${r}" placeholder="${RL[i]}" autocomplete="off"></div>`).join('')});
+
+async function loadRatings(){
+ const d=document.getElementById('dot'),t=document.getElementById('stxt');
+ if(!RATINGS_URL||location.protocol==='file:'){d.className='dot snap';t.textContent='snapshot (abra via URL p/ dados ao vivo)';return;}
+ try{const r=await fetch(RATINGS_URL,{cache:'no-store'});if(!r.ok)throw 0;const j=await r.json();
+  R=j;SRC="live";d.className='dot live';
+  const dd=(j.updated||'').slice(0,10);t.textContent='atualizado '+dd;
+ }catch(e){d.className='dot snap';t.textContent='snapshot (sem conexão)';}
+}
+loadRatings();
+
+let MODE='teams';
+function mode(m){MODE=m;
+ document.getElementById('tabT').classList.toggle('on',m=='teams');
+ document.getElementById('tabD').classList.toggle('on',m=='draft');
+ document.getElementById('da').classList.toggle('show',m=='draft');
+ document.getElementById('db').classList.toggle('show',m=='draft');}
+
+function syn(ch){let sc={early:-1,mid:0,late:1},cc=0,en=0,s=[],ad=0,ap=0,fl=0,poke=0;
+ ch.forEach(c=>{let t=B.tags[c];if(!t)return;cc+=t.cc;en+=t.engage;s.push(sc[t.scaling]??0);
+  if(t.dmg=='AD')ad++;if(t.dmg=='AP')ap++;fl+=t.frontline;
+  if((t.class=='Artillery'||t.class=='Specialist')&&t.range=='ranged')poke++;});
+ return{cc,engage:en,scaling:s.length?s.reduce((a,b)=>a+b,0)/s.length:0,ad,ap,frontline:fl,poke};}
+function reading(ch){let s=syn(ch),id=[];if(!ch.length)return id;
+ if(s.scaling>=.4)id.push('late-game');else if(s.scaling<=-.4)id.push('early tempo');else id.push('mid-game');
+ if(s.engage>=2)id.push('hard-engage');else if(s.engage==0)id.push('sem engage');
+ if(s.poke>=1&&s.engage==0)id.push('poke/siege');
+ if(s.frontline>=2)id.push('frontline');else if(s.frontline==0)id.push('squishy');
+ if(s.cc>=7)id.push('CC-heavy');
+ if(Math.abs(s.ad-s.ap)>=4)id.push('dano unilateral');
+ return id;}
+const v=id=>(document.getElementById(id).value||'').trim();
+
+let lastP=.5,lastA="A",lastB="B";
+function run(){
+ let a=v('ta')||'Blue',b=v('tb')||'Red';
+ let ca=MODE=='draft'?ROLES.map(r=>v('a_'+r)).filter(x=>x):[];
+ let cb=MODE=='draft'?ROLES.map(r=>v('b_'+r)).filter(x=>x):[];
+ let teb=R.telo[a]??1500,ter=R.telo[b]??1500;
+ let fb=R.form[a]??.5,fr=R.form[b]??.5;
+ let cwr=c=>R.champ_wr?.[c]??B.snapshot.champ_wr[c]??.5;
+ let meta=(ca.length&&cb.length)?(ca.map(cwr).reduce((x,y)=>x+y,0)/ca.length-cb.map(cwr).reduce((x,y)=>x+y,0)/cb.length):0;
+ let sa=syn(ca),sb=syn(cb);
+ let row={telo_diff:(teb-ter)/400,pelo_diff:(teb-ter)/400,form_diff:fb-fr,
+  d_meta_wr:meta,d_cc:sa.cc-sb.cc,d_scaling:sa.scaling-sb.scaling,d_engage:sa.engage-sb.engage};
+ let z=B.feats.map((f,i)=>((row[f]??0)-B.mean[i])/B.scale[i]);
+ let logit=B.intercept+z.reduce((s,zi,i)=>s+zi*B.coef[i],0);
+ let p=1/(1+Math.exp(-logit));
+ lastP=p;lastA=a;lastB=b;
+ let pa=Math.round(p*100),pb=100-pa;
+ document.getElementById('out').style.display='block';
+ document.getElementById('bb').style.width=pa+'%';
+ document.getElementById('bb').textContent=pa+'%';document.getElementById('rb').textContent=pb+'%';
+ document.getElementById('na').textContent=a;document.getElementById('nb').textContent=b;
+ document.getElementById('loa').textContent='Odd justa '+a;document.getElementById('lob').textContent='Odd justa '+b;
+ document.getElementById('oa').textContent=(1/p).toFixed(2);
+ document.getElementById('ob').textContent=(1/(1-p)).toFixed(2);
+ let rd=[...reading(ca).map(t=>`<span class="tag">${a}: ${t}</span>`),
+         ...reading(cb).map(t=>`<span class="tag">${b}: ${t}</span>`)].join('');
+ document.getElementById('read').innerHTML=rd;
+ let na=R.games_played?.[a]??0,nb=R.games_played?.[b]??0,mn=Math.min(na,nb);
+ let cf=mn>=15?'':mn>=5?`<span class="warn">confiança média — ${a}:${na}j ${b}:${nb}j</span>`
+  :`<span class="warn">⚠ confiança BAIXA — ${a}:${na}j ${b}:${nb}j (pouco histórico)</span>`;
+ document.getElementById('conf').innerHTML=cf||`base: ${SRC=='live'?'atualizada':'snapshot'} · ${a}:${na}j ${b}:${nb}j`;
+ document.getElementById('hoa').value='';document.getElementById('hob').value='';
+ document.getElementById('verd').className='verdict';
+}
+function cmp(){
+ let ha=parseFloat(v('hoa').replace(',','.')),hb=parseFloat(v('hob').replace(',','.'));
+ let fa=1/lastP,fb=1/(1-lastP),el=document.getElementById('verd');
+ let msgs=[];
+ if(ha>0){let edge=(ha/fa-1)*100; if(ha>fa)msgs.push(`✓ ${lastA}: casa paga ${ha.toFixed(2)} vs justa ${fa.toFixed(2)} → +${edge.toFixed(1)}% valor`);
+  else msgs.push(`✗ ${lastA}: ${ha.toFixed(2)} < justa ${fa.toFixed(2)} (sem valor)`);}
+ if(hb>0){let edge=(hb/fb-1)*100; if(hb>fb)msgs.push(`✓ ${lastB}: casa paga ${hb.toFixed(2)} vs justa ${fb.toFixed(2)} → +${edge.toFixed(1)}% valor`);
+  else msgs.push(`✗ ${lastB}: ${hb.toFixed(2)} < justa ${fb.toFixed(2)} (sem valor)`);}
+ if(!msgs.length){el.className='verdict';return;}
+ let hasValue=msgs.some(m=>m.startsWith('✓'));
+ el.className='verdict '+(hasValue?'value':'novalue');
+ el.innerHTML=msgs.join('<br>');
+}
+document.getElementById('foot').innerHTML='Probabilidade calibrada (ECE 0.024). Odd justa = 1/prob; '+
+ 'há valor quando a casa paga acima dela. A força do time domina; o draft ajusta na margem. '+
+ '<span class="warn">Não é conselho financeiro.</span>';
+</script></body></html>
