@@ -1,23 +1,23 @@
 #!/usr/bin/env python3
 """
-update_ratings.py — daily pipeline step (robusto a URL com data).
+update_ratings.py - pipeline diario.
 
-A Oracle's Elixir publica o CSV com a DATA no nome do arquivo, ex.:
-  .../2026_LoL_esports_match_data_from_OraclesElixir_20260601.csv
-e essa data muda a cada atualizacao. Em vez de fixar/raspar, este script
-TESTA as datas recentes (de hoje pra tras) e usa o primeiro arquivo que existir.
-
-Gera ratings.json com Elo de time/jogador, forma e win-rate de campeao (walk-forward).
+Baixa o CSV de 2026 da Oracle's Elixir pelo link direto do Google Drive (ID fixo),
+calcula Elo de time/jogador, forma e win-rate de campeao (walk-forward) e grava
+ratings.json. Roda no GitHub Actions todo dia, ou na mao.
 
   pip install pandas requests
-  python3 update_ratings.py            # ano atual, descoberta automatica
-  OE_URL="<link>" python3 update_ratings.py   # forca uma URL especifica
+  python3 update_ratings.py
+  OE_URL="<link csv>" python3 update_ratings.py   # sobrescreve a fonte, se precisar
+
+Quando virar 2027 (ou se o arquivo mudar de ID), troque FILE_ID pelo novo
+(pegue em oracleselixir.com/tools/downloads -> Google Drive -> arquivo -> link).
 """
-import sys, os, io, json, datetime as dt
+import sys, os, io, re, json, datetime as dt
 import requests, numpy as np, pandas as pd
 from collections import defaultdict, deque
 
-BASE = "https://oracleselixir-downloadable-match-data.s3-us-west-2.amazonaws.com"
+FILE_ID = "1hnpbrUpBMS1TZI7IovfpKeZfWJH1Aptm"   # 2026 CSV (Oracle's Elixir, Google Drive)
 TIER1 = {"LCK","LPL","LEC","LTA N","LTA S","LCS","CBLOL","MSI","EWC","Worlds","WLDs","First Stand"}
 ROLES = ["top","jng","mid","bot","sup"]
 Kt, Kp = 24, 20
@@ -25,27 +25,43 @@ Kt, Kp = 24, 20
 def resolve_year():
     return int(sys.argv[1]) if len(sys.argv) > 1 and sys.argv[1].isdigit() else dt.date.today().year
 
-def find_url(year, lookback_days=21):
-    """Probe dated filenames from today backwards; return first existing (HTTP 200)."""
-    forced = os.environ.get("OE_URL")
-    if forced:
-        return forced
-    today = dt.date.today()
-    for d in range(lookback_days):
-        day = today - dt.timedelta(days=d)
-        url = f"{BASE}/{year}_LoL_esports_match_data_from_OraclesElixir_{day.strftime('%Y%m%d')}.csv"
-        try:
-            if requests.head(url, timeout=20).status_code == 200:
-                print(f"- encontrado: {url}", file=sys.stderr); return url
-        except requests.RequestException:
-            pass
-    return f"{BASE}/{year}_LoL_esports_match_data_from_OraclesElixir.csv"
+def drive_download(file_id):
+    """Baixa um arquivo do Drive, tratando o aviso de 'arquivo grande' (confirm token)."""
+    s = requests.Session()
+    base = "https://drive.google.com/uc?export=download"
+    r = s.get(base, params={"id": file_id}, timeout=300,
+              headers={"User-Agent": "Mozilla/5.0"})
+    # Se vier HTML (pagina de aviso p/ arquivos grandes), extrai token e refaz.
+    if r.content[:20].lstrip().startswith(b"<"):
+        token = None
+        for k, v in s.cookies.items():
+            if k.startswith("download_warning"):
+                token = v
+        if not token:
+            m = re.search(r'(confirm=[\w-]+)', r.text)
+            if m:
+                token = m.group(1).split("=")[1]
+            else:
+                m2 = re.search(r'href="(/uc\?export=download[^"]+)"', r.text)
+                if m2:
+                    r = s.get("https://drive.google.com"+m2.group(1).replace("&amp;","&"),
+                              timeout=300, headers={"User-Agent":"Mozilla/5.0"})
+                    return r.content
+        if token:
+            r = s.get(base, params={"id": file_id, "confirm": token}, timeout=300,
+                      headers={"User-Agent":"Mozilla/5.0"})
+    r.raise_for_status()
+    return r.content
 
 def fetch(year):
-    url = find_url(year)
-    print(f"- baixando {url}", file=sys.stderr)
-    r = requests.get(url, timeout=180); r.raise_for_status()
-    return pd.read_csv(io.BytesIO(r.content), low_memory=False)
+    if os.environ.get("OE_URL"):
+        print(f"- baixando (OE_URL): {os.environ['OE_URL']}", file=sys.stderr)
+        c = requests.get(os.environ["OE_URL"], timeout=300,
+                         headers={"User-Agent":"Mozilla/5.0"}).content
+    else:
+        print(f"- baixando CSV {year} do Google Drive (id {FILE_ID})", file=sys.stderr)
+        c = drive_download(FILE_ID)
+    return pd.read_csv(io.BytesIO(c), low_memory=False)
 
 def build(df):
     df = df[df.league.isin(TIER1)]
