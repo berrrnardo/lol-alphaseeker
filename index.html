@@ -58,6 +58,22 @@ font-size:1.1rem;border:1px solid var(--line);margin-bottom:4px}
 .reading{margin-top:8px;font-size:.74rem;color:var(--mut)}
 .tag{display:inline-block;background:var(--panel2);border:1px solid var(--line);border-radius:14px;padding:2px 8px;margin:2px 3px 0 0;font-size:.72rem;color:#cdd9e5}
 .conf{font-size:.7rem;color:var(--mut);text-align:center;margin-top:8px}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
+.stat{background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:9px;text-align:center}
+.stat .v{font-family:'Chakra Petch';font-size:1.25rem;font-weight:700}
+.stat .l{font-size:.6rem;color:var(--mut);text-transform:uppercase;letter-spacing:.05em;margin-top:2px}
+.hrow{background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:9px 10px;margin-bottom:7px;font-size:.8rem}
+.hrow .top{display:flex;justify-content:space-between;align-items:center;gap:6px}
+.hrow .mt{color:var(--mut);font-size:.68rem;margin-top:3px}
+.hrow .pick{font-weight:700;font-family:'Chakra Petch'}
+.hbtns{display:flex;gap:5px;flex-shrink:0}
+.hb{border:1px solid var(--line);background:#0a121c;color:var(--txt);border-radius:7px;padding:4px 9px;font-family:'Chakra Petch';font-size:.7rem;cursor:pointer}
+.hb.w{border-color:var(--green);color:var(--green)}.hb.l{border-color:var(--red);color:var(--red)}
+.hb.on-w{background:rgba(52,211,153,.2)}.hb.on-l{background:rgba(255,90,90,.18)}
+.hb.del{border-color:#3a4656;color:var(--mut);margin-left:2px}
+.hres{font-family:'Chakra Petch';font-size:.72rem;padding:2px 7px;border-radius:6px}
+.hres.w{color:var(--green)}.hres.l{color:var(--red)}.hres.p{color:var(--gold)}
+.empty{color:var(--mut);font-size:.78rem;text-align:center;padding:14px 0}
 .foot{font-size:.64rem;color:#566576;text-align:center;margin-top:16px;line-height:1.6}
 .warn{color:var(--gold)}
 datalist{position:absolute}
@@ -89,7 +105,21 @@ datalist{position:absolute}
    <div class="vrow"><input id="hoa" inputmode="decimal" placeholder="odd casa A" oninput="cmp()">
     <input id="hob" inputmode="decimal" placeholder="odd casa B" oninput="cmp()"></div>
    <div class="verdict" id="verd"></div></div>
+  <div class="lab" style="font-size:.66rem;color:var(--mut);text-transform:uppercase;letter-spacing:.07em;margin-top:12px">Registrar — em qual lado você apostou?</div>
+  <div style="display:flex;gap:8px;margin-top:6px">
+   <button class="go" style="margin:0;background:linear-gradient(95deg,#15346e,#4d8dff)" onclick="salvar('A')" id="regA">Apostei no A</button>
+   <button class="go" style="margin:0;background:linear-gradient(95deg,#ff5a5a,#7a1d1d)" onclick="salvar('B')" id="regB">Apostei no B</button>
+  </div>
  </div>
+</div>
+
+<div class="card" id="trackcard">
+ <div style="display:flex;justify-content:space-between;align-items:center">
+  <h1 style="font-size:.95rem">Track <b>record</b></h1>
+  <div style="font-size:.66rem;color:var(--mut)"><span id="exp" onclick="exportar()" style="cursor:pointer;text-decoration:underline">exportar</span> · <label for="imp" style="cursor:pointer;text-decoration:underline;display:inline">importar</label><input id="imp" type="file" accept=".json" style="display:none" onchange="importar(event)"></div>
+ </div>
+ <div id="stats" class="stats"></div>
+ <div id="hist"></div>
 </div>
 
 <div class="foot" id="foot"></div>
@@ -140,11 +170,12 @@ function reading(ch){let s=syn(ch),id=[];if(!ch.length)return id;
  return id;}
 const v=id=>(document.getElementById(id).value||'').trim();
 
-let lastP=.5,lastA="A",lastB="B";
+let lastP=.5,lastA="A",lastB="B",lastCA=[],lastCB=[],lastReady=false;
 function run(){
  let a=v('ta')||'Blue',b=v('tb')||'Red';
  let ca=MODE=='draft'?ROLES.map(r=>v('a_'+r)).filter(x=>x):[];
  let cb=MODE=='draft'?ROLES.map(r=>v('b_'+r)).filter(x=>x):[];
+ lastCA=ca;lastCB=cb;lastReady=true;
  let teb=R.telo[a]??1500,ter=R.telo[b]??1500;
  let fb=R.form[a]??.5,fr=R.form[b]??.5;
  let cwr=c=>R.champ_wr?.[c]??B.snapshot.champ_wr[c]??.5;
@@ -173,6 +204,8 @@ function run(){
  document.getElementById('conf').innerHTML=cf||`base: ${SRC=='live'?'atualizada':'snapshot'} · ${a}:${na}j ${b}:${nb}j`;
  document.getElementById('hoa').value='';document.getElementById('hob').value='';
  document.getElementById('verd').className='verdict';
+ document.getElementById('regA').textContent='Apostei: '+a;
+ document.getElementById('regB').textContent='Apostei: '+b;
 }
 function cmp(){
  let ha=parseFloat(v('hoa').replace(',','.')),hb=parseFloat(v('hob').replace(',','.'));
@@ -187,6 +220,82 @@ function cmp(){
  el.className='verdict '+(hasValue?'value':'novalue');
  el.innerHTML=msgs.join('<br>');
 }
+// ---------- TRACK RECORD ----------
+const KEY='lol_alphaseeker_history';
+function load(){try{return JSON.parse(localStorage.getItem(KEY))||[]}catch(e){return[]}}
+function store(h){localStorage.setItem(KEY,JSON.stringify(h))}
+function salvar(side){
+ if(!lastReady){return;}
+ let chosenTeam = side==='A'?lastA:lastB;
+ let chosenP = side==='A'?lastP:(1-lastP);   // prob que o MODELO deu ao lado QUE VOCÊ escolheu
+ let modelFav = lastP>=.5?lastA:lastB;
+ let againstModel = chosenTeam!==modelFav;
+ let h=load();
+ h.unshift({id:Date.now(),ts:new Date().toISOString(),
+   a:lastA,b:lastB,p:lastP,ca:lastCA,cb:lastCB,
+   side:side, pick:chosenTeam, pickP:chosenP, oddFair:1/chosenP,
+   against:againstModel, result:null});
+ store(h);render();
+ document.getElementById('trackcard').scrollIntoView({behavior:'smooth'});
+}
+function mark(id,res){
+ let h=load(),it=h.find(x=>x.id===id);if(!it)return;
+ it.result=(it.result===res?null:res);store(h);render();
+}
+function del(id){let h=load().filter(x=>x.id!==id);store(h);render();}
+function fmtd(ts){let d=new Date(ts);return d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})+' '+d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}
+function render(){
+ let h=load(),hist=document.getElementById('hist'),st=document.getElementById('stats');
+ // stats sobre os jogos com resultado marcado
+ let done=h.filter(x=>x.result);
+ let n=done.length, wins=done.filter(x=>x.result==='win').length;
+ let acc=n?wins/n*100:0;
+ // lucro fictício: 1u por palpite na odd JUSTA do lado escolhido
+ let units=0; done.forEach(x=>{units+= x.result==='win' ? (x.oddFair-1) : -1;});
+ // calibração: confiança média prevista vs acerto real
+ let avgConf=n?done.reduce((s,x)=>s+x.pickP,0)/n*100:0;
+ st.innerHTML = n? `
+  <div class="stat"><div class="v">${wins}/${n}</div><div class="l">acertos</div></div>
+  <div class="stat"><div class="v" style="color:${acc>=50?'var(--green)':'var(--red)'}">${acc.toFixed(0)}%</div><div class="l">taxa de acerto</div></div>
+  <div class="stat"><div class="v" style="color:${units>=0?'var(--green)':'var(--red)'}">${units>=0?'+':''}${units.toFixed(2)}u</div><div class="l">lucro* (odd justa)</div></div>`
+  : `<div class="empty" style="grid-column:1/4">Sem resultados marcados ainda. Registre palpites e marque ganhou/perdeu.</div>`;
+ if(n){let cal=document.createElement('div');}
+ // lista
+ if(!h.length){hist.innerHTML='<div class="empty">Nenhum palpite registrado. Calcule e clique ★ Registrar palpite.</div>';return;}
+ hist.innerHTML=h.map(x=>{
+  let draft = (x.ca&&x.ca.length)?` · draft: ${x.ca.join(', ')} vs ${x.cb.join(', ')}`:'';
+  let resTag = x.result==='win'?`<span class="hres w">✓ acertou</span>`
+    : x.result==='loss'?`<span class="hres l">✗ errou</span>`
+    : `<span class="hres p">pendente</span>`;
+  let av = x.against?` <span style="color:var(--gold);font-size:.66rem">⚡contra o modelo</span>`:'';
+  return `<div class="hrow">
+   <div class="top">
+    <div><span class="pick">${x.pick}</span> <span style="color:var(--mut)">${(x.pickP*100).toFixed(0)}% · justa ${x.oddFair.toFixed(2)}</span>${av}</div>
+    <div class="hbtns">
+     <button class="hb w ${x.result==='win'?'on-w':''}" onclick="mark(${x.id},'win')">ganhou</button>
+     <button class="hb l ${x.result==='loss'?'on-l':''}" onclick="mark(${x.id},'loss')">perdeu</button>
+     <button class="hb del" onclick="del(${x.id})">✕</button>
+    </div>
+   </div>
+   <div class="mt">${x.a} vs ${x.b} · ${fmtd(x.ts)} ${resTag}${draft}</div>
+  </div>`;
+ }).join('');
+}
+function exportar(){
+ let blob=new Blob([JSON.stringify(load(),null,2)],{type:'application/json'});
+ let u=URL.createObjectURL(blob),a=document.createElement('a');
+ a.href=u;a.download='lol_track_record.json';a.click();URL.revokeObjectURL(u);
+}
+function importar(ev){
+ let f=ev.target.files[0];if(!f)return;let rd=new FileReader();
+ rd.onload=()=>{try{let imp=JSON.parse(rd.result);let cur=load();
+   let ids=new Set(cur.map(x=>x.id));imp.forEach(x=>{if(!ids.has(x.id))cur.push(x)});
+   cur.sort((a,b)=>b.id-a.id);store(cur);render();
+   alert('Importado! Total: '+cur.length+' palpites.');
+  }catch(e){alert('Arquivo inválido.')}};
+ rd.readAsText(f);
+}
+render();
 document.getElementById('foot').innerHTML='Probabilidade calibrada (ECE 0.024). Odd justa = 1/prob; '+
  'há valor quando a casa paga acima dela. A força do time domina; o draft ajusta na margem. '+
  '<span class="warn">Não é conselho financeiro.</span>';
